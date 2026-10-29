@@ -8302,7 +8302,7 @@ function viewRes(S,bs){const mon=monOf(S.a),days=[...Array(7)].map((_,k)=>shiftD
   return `<td class="${lv?'lv':''}">${lv?`<span class="lvc" title="${E(lv.type+(lv.note?' · '+lv.note:''))}">ลา</span>`:''}${mine.map(e=>`<span class="rs-c ${lv?'x':''}" style="--c:${BCOL[e.b]}" onclick="tbCalEv('${e.key}','${d}');tbCalView('day')">${e.chair===p.id?'★':''}${E(BT(e.b).short.slice(0,5))} ${e.time}</span>`).join('')}</td>`;}).join('')}</tr>`).join('');
  const rrow=ROOMS.map(r=>`<tr><td class="rs-n"><b>${E(r.replace('ห้องประชุม ','').replace('ห้อง ',''))}</b><small>ห้อง</small></td>${days.map((d,k)=>`<td>${all[k].filter(e=>e.room===r).map(e=>`<span class="rs-c ${issuesOf(e).rc.length?'bad':''}" style="--c:${BCOL[e.b]}">${E(BT(e.b).short.slice(0,5))} ${e.time}</span>`).join('')}${TB.roomBook.filter(b=>b.room===r&&b.date===d).map(b=>`<span class="rs-c ext" title="${E(b.title)}">${b.from} ${E(b.title.slice(0,10))}</span>`).join('')}</td>`).join('')}</tr>`).join('');
  return `<table class="rs"><thead>${th}</thead><tbody><tr class="rs-g"><td colspan="8">บุคลากร${S.b==='all'?'ทุก Board':' · '+E(BT(S.b).name)} <small>★ ประธาน · "ลา" = ไม่อยู่ (รอบที่ตรงกับวันลาจะขึ้น ⚠)</small></td></tr>${prow}<tr class="rs-g"><td colspan="8">ห้องประชุม <small>แถบเทา = ถูกจองโดยงานอื่น</small></td></tr>${rrow}</tbody></table>`;}
-function vCoordCalendar(){const S=CAL();S.v=S.v||'week';S.a=S.a||S.sel||TODAY;S.m=S.a.slice(0,7);if(S.v==='day'&&!S.pick)S.sel=S.a;if(!S.sel&&!S.pick&&S.v!=='res')S.sel=S.v==='month'?(S.a.slice(0,7)===TODAY.slice(0,7)?TODAY:S.a):S.a;
+function vCoordCalendar0(){const S=CAL();S.v=S.v||'week';S.a=S.a||S.sel||TODAY;S.m=S.a.slice(0,7);if(S.v==='day'&&!S.pick)S.sel=S.a;if(!S.sel&&!S.pick&&S.v!=='res')S.sel=S.v==='month'?(S.a.slice(0,7)===TODAY.slice(0,7)?TODAY:S.a):S.a;
  const pickC=S.pick?cs(S.pick):null,bs=bsOf(S),[r0,r1]=rangeOf(S);let free=0,seats=0,bad=0,cnt=0;for(let d=r0;d<=r1;d=shiftD(d,1))evsOf(d,bs).forEach(e=>{cnt++;seats+=e.cap;free+=e.cap-e.n;if(issuesOf(e).level==='bad')bad++;});
  const sel0=S.sel||'',dayEv=sel0?evsOf(sel0,bs):[],dayLv=sel0?TB.leaves.filter(l=>sel0>=l.from&&sel0<=l.to):[];
  const title=S.v==='month'?MONK[+S.m.slice(5)-1]+' '+S.m.slice(0,4):S.v==='day'?DOWK[new Date(S.a+'T00:00:00').getDay()]+' '+fmt(S.a):(()=>{const m=monOf(S.a),e=shiftD(m,6),a=new Date(m+'T00:00:00'),b=new Date(e+'T00:00:00');return a.getDate()+' '+SMON[a.getMonth()]+' – '+b.getDate()+' '+SMON[b.getMonth()]+' '+b.getFullYear();})();
@@ -9126,6 +9126,14 @@ TB.cases.filter(c=>c.decision&&c.decision.locked&&!(c.decision.plan&&c.decision.
  const tk=(c.tasks||[]).filter(t=>t&&t.text);
  d.plan=tk.length?tk.map((t,i)=>({type:recs[i]||recs[recs.length-1]||'Further investigation',detail:t.text,owner:t.owner||'',due:t.due||''})):recs.map(r=>({type:r,detail:'ดำเนินการตามมติ: '+r,owner:c.sender||'',due:''}));});
 
+/* Setup / ตารางงานแพทย์ = หน้าเต็มของตัวเอง (ไม่ซ่อนไว้ใต้ปฏิทิน) */
+function vCoordCalendar(){const S=CAL();
+ if(S.panel==='setup'||S.panel==='docs'){
+  const t=S.panel==='setup'?'ตั้งค่าตารางประจำ & ทีม':'ตารางงานแพทย์';
+  return H(t,'Case Manager · Board Setup',`<button class="btn btn--primary" onclick="tbCalPanel('${S.panel}')">← กลับไปปฏิทิน</button>`)+`<div class="nv-body">${S.panel==='setup'?boardSchedule(S.b==='all'?'all':S.b):docRoutine()}<div style="margin-top:14px"><button class="btn btn--secondary" onclick="tbCalPanel('${S.panel}')">← กลับไปปฏิทิน</button></div></div>`;}
+ return vCoordCalendar0();}
+{const _p=A.tbCalPanel;A.tbCalPanel=function(p){_p(p);window.scrollTo(0,0);const m=document.querySelector('.main,.content,.nv-body');if(m&&m.scrollTo)m.scrollTo(0,0);if(p==='new'&&CAL().panel==='new'){setTimeout(()=>{const b=document.querySelector('.nv-body');const c=b&&b.lastElementChild;if(c&&c.scrollIntoView)c.scrollIntoView({block:'start'});},30);}};}
+
 
 /* ---------- TEAM · shared meeting helpers ---------- */
 TB.meetings.forEach(m=>{m.outcomes=m.outcomes||{};if(m.status==='closed')m.caseIds.forEach(id=>{m.outcomes[id]='decided';});});
@@ -9296,9 +9304,12 @@ A.tbMock=function(m){toast('success',m);};
 A.tbFilter=function(q){q=(q||'').toLowerCase();let n=0;document.querySelectorAll('.nv-table tbody tr[data-s]').forEach(r=>{const ok=r.dataset.s.includes(q);r.style.display=ok?'':'none';if(ok)n++;});const e=document.getElementById('nvCount');if(e)e.textContent=n+' เคส';};
 const RAILS={
  'mdt-doctor':()=>[{key:'d-cases',label:'เคสของฉัน',icon:'list-check',count:TB.cases.filter(c=>c.sender===DOCTOR&&c.status==='rejected').length},{key:'t-live',label:'วันประชุม (Live Board)',icon:'monitor-play'},{key:'d-new',label:'ส่งเคสเข้า Board',icon:'comment-medical'},{key:'d-results',label:'มติ Board / ค้นหาย้อนหลัง',icon:'file-check',count:TB.cases.filter(c=>c.sender===DOCTOR&&['decided','followup'].includes(c.status)&&!c.doctorAck).length}],
- 'mdt-nurse':()=>[{key:'n-work',label:'งานของฉัน (Dashboard)',icon:'list-check',count:TB.cases.filter(c=>['requested','ready','decided'].includes(c.status)).length},{key:'t-live',label:'Live Board',icon:'monitor-play'},{key:'c-queue',label:'คิวเคสทั้งหมด',icon:'list'},{key:'c-calendar',label:'ปฏิทิน Board / Slot',icon:'calendar-days'},{key:'c-appt',label:'Appointment Report FM-TBC-002',icon:'calendar-check'},{key:'t-summary',label:'สรุปผล / EMR',icon:'file-text'},{key:'k-kpi',label:'KPI Board',icon:'clipboard-list'},{key:'n-tpl',label:'Template ดึงข้อมูล',icon:'clipboard-list'},{key:'c-registry',label:'Cancer Registry',icon:'shield-check'},{key:'c-network',label:'Network Hospital Intake',icon:'hospital'}],
- 'mdt-team':()=>[{key:'t-meetings',label:'ประชุมของฉัน',icon:'calendar-days',count:myMeetings().filter(m=>m.status!=='closed'&&m.invitees[TB.me]==='invited').length},{key:'t-summary',label:'สรุปผล / EMR',icon:'file-text'},{key:'k-kpi',label:'KPI Board',icon:'clipboard-list'}]};
+ 'mdt-nurse':()=>[{key:'n-work',label:'งานของฉัน (Dashboard)',icon:'list-check',count:TB.cases.filter(c=>['requested','ready','decided'].includes(c.status)).length},{key:'t-live',label:'Live Board',icon:'monitor-play'},{key:'c-queue',label:'คิวเคสทั้งหมด',icon:'inbox-q'},{key:'c-calendar',label:'ปฏิทิน Board / Slot',icon:'calendar-days'},{key:'c-appt',label:'Appointment Report FM-TBC-002',icon:'calendar-check'},{key:'t-summary',label:'สรุปผล / EMR',icon:'file-text'},{key:'k-kpi',label:'KPI Board',icon:'bar-chart'},{key:'n-tpl',label:'Template ดึงข้อมูล',icon:'layout-tpl'},{key:'c-registry',label:'Cancer Registry',icon:'shield-check'},{key:'c-network',label:'Network Hospital Intake',icon:'hospital'}],
+ 'mdt-team':()=>[{key:'t-meetings',label:'ประชุมของฉัน',icon:'calendar-days',count:myMeetings().filter(m=>m.status!=='closed'&&m.invitees[TB.me]==='invited').length},{key:'t-summary',label:'สรุปผล / EMR',icon:'file-text'},{key:'k-kpi',label:'KPI Board',icon:'bar-chart'}]};
 Object.assign(ICONS,{
+ 'inbox-q':'<path d="M3 13h5l1.5 3h5l1.5-3h5"/><path d="M5 13 7 5h10l2 8v6H5z"/>',
+ 'bar-chart':'<path d="M4 20V4M4 20h16"/><rect x="7.5" y="11" width="3" height="6"/><rect x="13" y="7" width="3" height="10"/>',
+ 'layout-tpl':'<rect x="3.5" y="4" width="17" height="16" rx="2"/><path d="M3.5 9h17M9 9v11"/>',
  'clipboard-list':'<rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4V3h6v1M8 9h2m3 0h3M8 13h2m3 0h3M8 17h2m3 0h3"/>',
  'calendar-days':'<rect x="3.5" y="5" width="17" height="16" rx="2"/><path d="M7.5 3v4M16.5 3v4M3.5 10h17M8 13h2M13 13h2M8 17h2M13 17h2"/>',
  hospital:'<path d="M4 21V4h16v17M2 21h20M9 21v-5h6v5M8 8h2m4 0h2M8 12h2m4 0h2"/><path d="M12 2v5M9.5 4.5h5"/>',
