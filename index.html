@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Google Calendar — ส่งคำเชิญแพทย์</title>
+<style>
+:root{font-family:system-ui,-apple-system,"Segoe UI",sans-serif;color:#172033;background:#f4f7fb}
+*{box-sizing:border-box}body{margin:0}main{max-width:900px;margin:32px auto;padding:0 16px}
+.card{background:#fff;border:1px solid #e2e8f0;border-radius:18px;padding:24px;box-shadow:0 8px 30px #0f172a0b}
+h1{font-size:clamp(24px,4vw,34px);margin:0 0 8px}.muted{color:#64748b;line-height:1.6}
+.notice{padding:12px 14px;border-radius:10px;background:#fff7ed;color:#9a3412;margin:16px 0;line-height:1.55}
+label{display:block;font-weight:650;margin:14px 0 6px}
+input,textarea{font:inherit;width:100%;padding:11px 12px;border:1px solid #cbd5e1;border-radius:9px;background:#fff;color:#172033}
+textarea{min-height:100px;resize:vertical}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:0 14px}
+.actions{display:flex;gap:10px;flex-wrap:wrap;margin:20px 0 14px}
+button{font:inherit;font-weight:650;border:0;border-radius:9px;padding:11px 16px;cursor:pointer}
+button:disabled{opacity:.45;cursor:not-allowed}.primary{background:#1769e0;color:#fff}.secondary{background:#e8eef7;color:#1e293b}.danger{background:#fee2e2;color:#991b1b}
+#status{white-space:pre-wrap;line-height:1.55;border-radius:10px;padding:12px 14px;background:#eff6ff;color:#1d4ed8}
+#status.error{background:#fef2f2;color:#b91c1c}#status.success{background:#ecfdf5;color:#047857}
+#result{margin-top:14px;line-height:1.7;overflow-wrap:anywhere}
+a{color:#1769e0}footer{font-size:13px;color:#64748b;margin:14px 2px}
+@media(max-width:620px){.grid{grid-template-columns:1fr}.card{padding:18px}}
+</style>
+</head>
+<body>
+<main>
+<section class="card">
+<h1>ส่งคำเชิญนัดหมายแพทย์</h1>
+<p class="muted">สร้าง Event ใน Google Calendar ของบัญชีผู้ส่ง และส่งคำเชิญไปยังอีเมลแพทย์ผ่าน Google Calendar</p>
+<div class="notice"><strong>ก่อนส่ง:</strong> บัญชี Google ที่ Login จะเป็นผู้จัดนัดหมาย (Organizer) กรุณาทดลองส่งไปยังอีเมลที่ยินยอมให้ทดสอบก่อน และตรวจสอบวันเวลา/Note ให้ถูกต้อง</div>
+
+<div class="actions">
+<button id="login" class="primary" disabled>1. Login Google</button>
+<button id="logout" class="secondary" disabled>Sign out / ยกเลิกสิทธิ์</button>
+</div>
+<div id="status" role="status" aria-live="polite">กำลังโหลด Google API…</div>
+
+<form id="inviteForm">
+<div class="grid">
+<div>
+<label for="title">หัวข้อนัดหมาย *</label>
+<input id="title" required maxlength="180" value="นัดหมายแพทย์">
+</div>
+<div>
+<label for="doctorEmail">อีเมลแพทย์ผู้รับคำเชิญ *</label>
+<input id="doctorEmail" type="email" required placeholder="doctor@example.com" autocomplete="email">
+</div>
+<div>
+<label for="start">วันและเวลาเริ่มต้น *</label>
+<input id="start" type="datetime-local" required>
+</div>
+<div>
+<label for="end">วันและเวลาสิ้นสุด *</label>
+<input id="end" type="datetime-local" required>
+</div>
+</div>
+<label for="note">Note / รายละเอียดนัดหมาย</label>
+<textarea id="note" maxlength="5000" placeholder="ระบุรายละเอียดที่ต้องการให้แพทย์ทราบ (อย่าใส่ข้อมูลผู้ป่วยจริงในการทดสอบ)"></textarea>
+<label for="location">สถานที่ (ถ้ามี)</label>
+<input id="location" maxlength="500" placeholder="เช่น ห้องประชุม / คลินิก">
+<div class="actions">
+<button id="send" class="primary" type="submit" disabled>2. สร้างนัดหมายและส่งคำเชิญ</button>
+<button id="reset" class="secondary" type="reset">ล้างแบบฟอร์ม</button>
+</div>
+</form>
+<div id="result"></div>
+</section>
+<footer>สิทธิ์ที่ใช้: https://www.googleapis.com/auth/calendar.events — สร้างและจัดการ Event ได้ โปรดอนุญาตเฉพาะบัญชีทดสอบที่จำเป็น</footer>
+</main>
+<script>
+  // ใส่ค่าจาก Google Cloud Console ก่อนใช้งาน
+  const CLIENT_ID = 'YOUR_CLIENT_ID.apps.googleusercontent.com';
+  const API_KEY = 'YOUR_API_KEY';
+  const DISCOVERY_DOC = 'https://www.googleapis.com/discovery/v1/apis/calendar/v3/rest';
+  const SCOPES = 'https://www.googleapis.com/auth/calendar.events';
+  const TZ = 'Asia/Bangkok';
+
+  const $ = id => document.getElementById(id);
+  let tokenClient;
+  let gapiReady = false;
+  let gisReady = false;
+  let authorized = false;
+
+  function status(message, kind='') {
+    $('status').textContent = message;
+    $('status').className = kind;
+  }
+  function configured() {
+    return !CLIENT_ID.startsWith('YOUR_') && API_KEY !== 'YOUR_API_KEY';
+  }
+  function checkReady() {
+    if (!configured()) {
+      status('ยังไม่ได้ตั้งค่า CLIENT_ID หรือ API_KEY ในไฟล์ index.html โปรดทำตาม README.md', 'error');
+      $('login').disabled = true;
+      return;
+    }
+    if (gapiReady && gisReady) {
+      $('login').disabled = false;
+      status('พร้อมใช้งาน กด Login Google ก่อนส่งคำเชิญ');
+    }
+  }
+  function updateAuthorizedUI() {
+    $('send').disabled = !authorized;
+    $('logout').disabled = !authorized;
+    $('login').disabled = authorized || !gapiReady || !gisReady || !configured();
+  }
+  function gapiLoaded() {
+    gapi.load('client', async () => {
+      try {
+        await gapi.client.init({apiKey: API_KEY, discoveryDocs: [DISCOVERY_DOC]});
+        gapiReady = true; checkReady();
+      } catch (e) {
+        status('โหลด Calendar API ไม่สำเร็จ: ' + (e.message || String(e)), 'error');
+      }
+    });
+  }
+  function gisLoaded() {
+    try {
+      tokenClient = google.accounts.oauth2.initTokenClient({
+        client_id: CLIENT_ID,
+        scope: SCOPES,
+        callback: response => {
+          if (response.error) {
+            authorized = false; updateAuthorizedUI();
+            status('Google Login ไม่สำเร็จ: ' + response.error, 'error');
+            return;
+          }
+          authorized = true;
+          updateAuthorizedUI();
+          status('Login สำเร็จ พร้อมสร้างนัดหมายและส่งคำเชิญ', 'success');
+        },
+        error_callback: error => status('เปิดหน้าต่าง Google Login ไม่สำเร็จ: ' + (error.message || error.type || 'unknown'), 'error')
+      });
+      gisReady = true; checkReady();
+    } catch (e) {
+      status('เริ่ม Google Identity Services ไม่สำเร็จ: ' + (e.message || String(e)), 'error');
+    }
+  }
+  $('login').addEventListener('click', () => {
+    if (!configured()) return checkReady();
+    tokenClient.requestAccessToken({prompt: 'consent'});
+  });
+  $('logout').addEventListener('click', () => {
+    const token = gapi.client.getToken();
+    if (token && token.access_token) {
+      google.accounts.oauth2.revoke(token.access_token, () => {
+        gapi.client.setToken('');
+        authorized = false;
+        updateAuthorizedUI();
+        $('result').textContent = '';
+        status('สิทธิ์การเข้าถึงถูกยกเลิกแล้ว', 'success');
+      });
+    } else {
+      gapi.client.setToken('');
+      authorized = false;
+      updateAuthorizedUI();
+      status('ออกจากสถานะ Login แล้ว');
+    }
+  });
+
+  function toRFC3339Bangkok(value) {
+    // datetime-local gives YYYY-MM-DDTHH:mm; explicitly apply Thailand UTC+07:00.
+    return value + ':00+07:00';
+  }
+  $('inviteForm').addEventListener('submit', async event => {
+    event.preventDefault();
+    if (!authorized || !gapi.client.getToken()) {
+      status('กรุณา Login Google ก่อนส่งคำเชิญ', 'error');
+      return;
+    }
+    const title = $('title').value.trim();
+    const doctorEmail = $('doctorEmail').value.trim();
+    const startValue = $('start').value;
+    const endValue = $('end').value;
+    const note = $('note').value.trim();
+    const location = $('location').value.trim();
+
+    if (!title || !doctorEmail || !startValue || !endValue) {
+      status('กรุณากรอกหัวข้อ อีเมลแพทย์ วันเวลาเริ่มต้น และวันเวลาสิ้นสุดให้ครบ', 'error');
+      return;
+    }
+    if (new Date(startValue) >= new Date(endValue)) {
+      status('วันเวลาสิ้นสุดต้องอยู่หลังวันเวลาเริ่มต้น', 'error');
+      return;
+    }
+    if (doctorEmail.toLowerCase() === '') {
+      status('กรุณาระบุอีเมลแพทย์', 'error'); return;
+    }
+
+    const button = $('send');
+    button.disabled = true;
+    $('result').textContent = '';
+    status('กำลังสร้าง Event และส่งคำเชิญไปยัง ' + doctorEmail + ' …');
+
+    const resource = {
+      summary: title,
+      description: note || '',
+      location: location || undefined,
+      start: {dateTime: toRFC3339Bangkok(startValue), timeZone: TZ},
+      end: {dateTime: toRFC3339Bangkok(endValue), timeZone: TZ},
+      attendees: [{email: doctorEmail}],
+      guestsCanModify: false,
+      guestsCanInviteOthers: false
+    };
+    try {
+      const response = await gapi.client.calendar.events.insert({
+        calendarId: 'primary',
+        sendUpdates: 'all',
+        resource
+      });
+      const created = response.result;
+      status('สร้าง Event สำเร็จ และส่งคำขอแจ้งเตือนคำเชิญแล้ว กรุณาตรวจสอบอีเมลผู้รับ', 'success');
+      const result = $('result');
+      const p = document.createElement('p');
+      p.textContent = 'Event: ' + (created.summary || title) + ' | ผู้รับ: ' + doctorEmail;
+      result.append(p);
+      if (created.htmlLink) {
+        const link = document.createElement('a');
+        link.href = created.htmlLink;
+        link.target = '_blank';
+        link.rel = 'noopener noreferrer';
+        link.textContent = 'เปิด Event ใน Google Calendar';
+        result.append(link);
+      }
+      const noteLine = document.createElement('p');
+      noteLine.className = 'muted';
+      noteLine.textContent = 'หมายเหตุ: API ตอบกลับว่าสร้าง Event แล้ว แต่ไม่ได้ยืนยันว่าแพทย์กด Accept คำเชิญแล้ว';
+      result.append(noteLine);
+    } catch (e) {
+      const message = e?.result?.error?.message || e?.message || JSON.stringify(e);
+      status('ส่งคำเชิญไม่สำเร็จ: ' + message +
+        '\nตรวจสอบ Calendar API, OAuth scope calendar.events, Authorized JavaScript origins และบัญชีผู้ส่งมีสิทธิ์สร้าง Event', 'error');
+    } finally {
+      button.disabled = !authorized;
+    }
+  });
+
+  $('reset').addEventListener('click', () => {
+    setTimeout(() => setDefaultTimes(), 0);
+  });
+  function setDefaultTimes() {
+    // Defaults are local browser time; for Thailand, browser should use Asia/Bangkok.
+    const now = new Date();
+    const start = new Date(now.getTime() + 60 * 60 * 1000);
+    start.setMinutes(Math.ceil(start.getMinutes() / 15) * 15, 0, 0);
+    const end = new Date(start.getTime() + 30 * 60 * 1000);
+    const toLocalInput = d => {
+      const pad = n => String(n).padStart(2, '0');
+      return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+    };
+    $('start').value = toLocalInput(start);
+    $('end').value = toLocalInput(end);
+  }
+  setDefaultTimes();
+</script>
+<script async defer src="https://apis.google.com/js/api.js" onload="gapiLoaded()"></script>
+<script async defer src="https://accounts.google.com/gsi/client" onload="gisLoaded()"></script>
+</body>
+</html>
