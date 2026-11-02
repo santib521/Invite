@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Gorilla HIS — MDT Board · Complex Case Multidisciplinary Care (v123)</title>
+<title>Gorilla HIS — MDT Board · Complex Case Multidisciplinary Care (v124)</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@300;400;500;600;700&display=swap" rel="stylesheet">
@@ -7491,6 +7491,7 @@ input.input,select.select,textarea.textarea,.input,.select,.textarea,.dxc-in .dx
 .ms-row .ms-free{flex:1 1 280px;margin:0;width:auto;align-items:flex-end}.ms-row .ms-free input.input{padding-bottom:6px}
 
 .lv-wl{justify-content:flex-start}.lv-wl .dy-nav{margin:0}.lv-wl .dy-d{font-size:16px;min-width:170px;text-align:center}.lv-wl .dy-pop{position:relative;display:inline-block}
+.pv-cap{max-height:240px!important}.pv-cap .rp-f{color:#aab4cc;font-size:13px}.pv-cap .rp-i{color:#fff;font-size:15px;font-weight:600;background:rgba(99,102,241,.18);border-left:3px solid #818cf8;padding:6px 10px;border-radius:4px}.pv-cap p b{color:#a5b4fc;font-size:11px;text-transform:uppercase;letter-spacing:.04em;margin-right:6px}
 
 </style>
 <script src="gemini-key.js"></script>
@@ -7581,7 +7582,7 @@ function mk(o){return Object.assign({board:'onc',urgency:'ปกติ',status:'
 function gen(dx,stage){return {
  timeline:[{date:addDays(-9),type:'Clinical',title:'พบแพทย์ครั้งแรก (OPD)',detail:'ส่งตรวจเพิ่มเติมเพื่อยืนยัน '+dx},{date:addDays(-6),type:'Pathology',title:'Biopsy / Pathology',detail:'รายงานเบื้องต้น: '+dx+' (ตัวอย่าง)'},{date:addDays(-4),type:'Radiology',title:'Imaging staging',detail:'ผล staging เบื้องต้น '+stage+' (ตัวอย่าง)'},{date:addDays(-2),type:'Laboratory',title:'Baseline labs',detail:'CBC / LFT / Creatinine อยู่ในเกณฑ์ที่ประเมินได้'}],
  labs:[{name:'Hb',result:'11.9',unit:'g/dL',ref:'12–16',flag:'L',date:addDays(-2),prev:''},{name:'Creatinine',result:'0.8',unit:'mg/dL',ref:'0.6–1.2',flag:'',date:addDays(-2),prev:''},{name:'Albumin',result:'3.9',unit:'g/dL',ref:'3.5–5.0',flag:'',date:addDays(-2),prev:''}],
- imaging:[{acc:'IMG-'+Math.floor(10000+Math.random()*80000),modality:'CT',date:addDays(-4),title:'CT staging',report:'ตัวอย่างรายงาน: ทบทวน '+dx+' · '+stage+' · รอรังสีแพทย์ทบทวนร่วมใน Board'}],
+ imaging:[{acc:'IMG-'+Math.floor(10000+Math.random()*80000),modality:'CT',date:addDays(-4),title:'CT staging',report:'FINDINGS: พบก้อน/รอยโรคที่ตำแหน่งปฐมภูมิ ขนาดประมาณ 3.2 cm ขอบเขตค่อนข้างชัด มีต่อมน้ำเหลืองบริเวณใกล้เคียงโตผิดปกติ 1 ตำแหน่ง (short axis ~1.1 cm) ไม่พบหลักฐานการกระจายไปอวัยวะอื่นชัดเจน IMPRESSION: ลักษณะเข้าได้กับ '+dx+' ('+stage+') สงสัยการลุกลามต่อมน้ำเหลืองใกล้เคียง ไม่พบ distant metastasis ควรนำเข้าพิจารณาในที่ประชุม MDT (ข้อมูลตัวอย่าง)'}],
  path:{specimen:'Biopsy (ตัวอย่าง)',histology:dx+' (ตัวอย่าง)',grade:'รอทบทวน',margin:'—',ihc:[['รอทบทวนร่วม','—']],slide:'Mock digital slide'}};}
 const C95=(()=>{const o={
  id:'MDT-26095',hn:'00973142',name:'นางสาว อรทัย ศรีสุข',age:56,sex:'หญิง',dx:'มะเร็งลำไส้ใหญ่ (Colorectal Cancer)',site:'Sigmoid colon',stage:'Stage III · cT3N1M0',ward:'ศัลยกรรมมะเร็ง',sender:DOCTOR,urgency:'เร่งด่วน',status:'scheduled',
@@ -10162,7 +10163,7 @@ function presentView(c,m){const B=BT(c.board),ids=m.caseIds||[],ci=ids.indexOf(c
  const imgS=c.imaging.map((i,k)=>({t:i.title,sub:i.modality+' · '+fmt(i.date)+' · '+i.acc,svg:th('rad',c.id+':'+i.acc),txt:i.report,star:'i'+k}));
  const pthS=PS_.map(s=>({t:s.title,sub:'Pathology · '+E(c.path.specimen||''),svg:th('path',c.id+':'+s.id,{mode:s.mode,mag:s.mag}),txt:c.path.histology+' · '+c.path.grade}));
  const pane=(key,L)=>`<div class="pv-pane" data-k="${key}" style="${tab===key?'':'display:none'}">${L.length?`<div class="pv-img">${L.map((x,i)=>`<div class="pv-sl" data-i="${i}" style="${i===(TB.ui.pvIdx||0)%L.length?'':'display:none'}">${x.svg}</div>`).join('')}</div>
-  <div class="pv-cap">${L.map((x,i)=>`<div class="pv-sl" data-i="${i}" style="${i===(TB.ui.pvIdx||0)%L.length?'':'display:none'}"><div class="pv-ct"><b>${E(x.t)}</b><small>${E(x.sub)}</small>${x.star?`<button class="pv-star ${ki.includes(x.star)?'on':''}" onclick="tbKeyImg('${c.id}','${x.star}')">${ki.includes(x.star)?'★ ภาพสำคัญ':'☆ ภาพสำคัญ'}</button>`:''}</div><p>${E(x.txt)}</p></div>`).join('')}</div>
+  <div class="pv-cap">${L.map((x,i)=>`<div class="pv-sl" data-i="${i}" style="${i===(TB.ui.pvIdx||0)%L.length?'':'display:none'}"><div class="pv-ct"><b>${E(x.t)}</b><small>${E(x.sub)}</small>${x.star?`<button class="pv-star ${ki.includes(x.star)?'on':''}" onclick="tbKeyImg('${c.id}','${x.star}')">${ki.includes(x.star)?'★ ภาพสำคัญ':'☆ ภาพสำคัญ'}</button>`:''}</div>${repHtml(x.txt)}</div>`).join('')}</div>
   <div class="pv-th">${L.map((x,i)=>`<button type="button" class="${i===(TB.ui.pvIdx||0)%L.length?'on':''}" onclick="pvGo(${i})" title="${E(x.t)}">${i+1}</button>`).join('')}</div>`:'<div class="pv-empty">ไม่มีข้อมูล</div>'}</div>`;
  const labs=c.labs.slice().sort((a,b)=>(b.flag?1:0)-(a.flag?1:0));
  const tl=c.timeline.slice().sort((a,b)=>String(b.date).localeCompare(String(a.date))).slice(0,8);
@@ -10189,6 +10190,8 @@ A.pvGo=function(i){TB.ui.pvIdx=i;pvSync();};
 A.pvTab=function(k){TB.ui.pvTab=k;TB.ui.pvIdx=0;pvSync();};
 window.__pvKey=function(e){if(!TB.ui.present)return false;const k=e.key;if(k==='ArrowRight'){pvStep(1);return true;}if(k==='ArrowLeft'){pvStep(-1);return true;}if(k==='PageDown'||k===']'){tbPresentCase(1);return true;}if(k==='PageUp'||k==='['){tbPresentCase(-1);return true;}if(k==='1'){pvTab('img');return true;}if(k==='2'){pvTab('path');return true;}return false;};
 (function(){const rv=window.render;let t=0;const mo=new MutationObserver(()=>{if(document.getElementById('pv')&&!t){t=1;setTimeout(()=>{t=0;pvSync();},0);}});mo.observe(document.body,{childList:true,subtree:true});})();
+
+function repHtml(t){t=String(t==null?'':t);const m=t.match(/^(?:FINDINGS:\s*)?([\s\S]*?)\s*IMPRESSION:\s*([\s\S]*)$/i);if(!m)return `<p>${E(t)}</p>`;return (m[1].trim()?`<p class="rp-f"><b>Findings</b> ${E(m[1].trim())}</p>`:'')+`<p class="rp-i"><b>Impression</b> ${E(m[2].trim())}</p>`;}
 
 
 /* ---------- TEAM · shared meeting helpers ---------- */
